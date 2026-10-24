@@ -1,0 +1,101 @@
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+spring:
+  application:
+    name: securegate-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:securegate_db}}
+    username: ${POSTGRES_USER:securegate_app}
+    password: ${POSTGRES_PASSWORD:secure_app_password_change_me}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: SecureGateHikariCP
+      maximum-pool-size: 15
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          batch_size: 25
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    user: ${POSTGRES_MIGRATION_USER:${POSTGRES_USER:securegate_admin}}
+    password: ${POSTGRES_MIGRATION_PASSWORD:${POSTGRES_PASSWORD:secure_admin_password_change_me}}
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+securegate:
+  app-base-url: ${APP_BASE_URL:http://localhost:3000}
+  mail:
+    from: ${MAIL_FROM:noreply@securegate.local}
+  jwt:
+    issuer: ${JWT_ISSUER:https://auth.securegate.local}
+    audience: ${JWT_AUDIENCE:securegate-api}
+    access-token-expiration-seconds: ${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS:900}
+    refresh-token-expiration-seconds: ${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS:604800}
+    private-key: ${JWT_PRIVATE_KEY:}
+    public-key: ${JWT_PUBLIC_KEY:}
+  webauthn:
+    rp-name: ${WEBAUTHN_RP_NAME:SecureGate}
+    rp-id: ${WEBAUTHN_RP_ID:localhost}
+    origin: ${WEBAUTHN_ORIGIN:http://localhost:3000}
+  magic-link:
+    expiration-minutes: ${MAGIC_LINK_EXPIRATION_MINUTES:15}
+  oauth:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    github:
+      client-id: ${GITHUB_CLIENT_ID:}
+      client-secret: ${GITHUB_CLIENT_SECRET:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /api/v1/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
