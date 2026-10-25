@@ -50,7 +50,8 @@ public class PermissionEvaluatorService {
         if (authentication == null || authentication.getPrincipal() == null) {
             return false;
         }
-        if (TenantContext.isPlatformAdmin()) {
+        if (TenantContext.isPlatformAdmin() || authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_PLATFORM_ADMIN"))) {
             return true;
         }
         try {
