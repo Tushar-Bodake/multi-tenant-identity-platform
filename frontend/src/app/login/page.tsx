@@ -69,7 +69,7 @@ export default function LoginPage() {
       try {
         if (typeof window !== 'undefined' && window.PublicKeyCredential) {
           const { startAuthentication } = await import('@simplewebauthn/browser');
-          const assertion = await startAuthentication({ optionsJSON: options });
+          const assertion = await startAuthentication(options);
           credentialId = assertion.id;
           clientDataJSON = assertion.response.clientDataJSON;
           authenticatorData = assertion.response.authenticatorData;
