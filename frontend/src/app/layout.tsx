@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: 'Enterprise-grade multi-tenant authentication, authorization, passkeys, and tamper-evident audit logging for SaaS.',
 };
 
+import { AuthProvider } from '@/context/AuthContext';
+
 export default function RootLayout({
   children,
 }: {
@@ -13,7 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full bg-slate-50">
-      <body className="h-full text-slate-900 antialiased">{children}</body>
+      <body className="h-full text-slate-900 antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

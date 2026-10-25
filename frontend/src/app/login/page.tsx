@@ -2,14 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Shield, KeyRound, Lock, Mail, ArrowRight, AlertCircle, Fingerprint, Github } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api, ProblemDetail } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { login, setAuth } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'password' | 'passkey' | 'magic-link'>('password');
