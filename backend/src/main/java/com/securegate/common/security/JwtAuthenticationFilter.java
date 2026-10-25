@@ -38,6 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 try {
                     JWTClaimsSet claims = jwtService.validateAndParseToken(token);
                     String userId = claims.getSubject();
+                    String email = (String) claims.getClaim("email");
                     String role = (String) claims.getClaim("role");
                     String tenantIdStr = (String) claims.getClaim("tenant_id");
 
@@ -53,6 +54,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         }
                     }
 
+                    if (userId != null) {
+                        TenantContext.setUserId(UUID.fromString(userId));
+                    }
+                    if (email != null) {
+                        TenantContext.setUserEmail(email);
+                    }
                     if (tenantIdStr != null) {
                         TenantContext.setTenantId(UUID.fromString(tenantIdStr));
                     }

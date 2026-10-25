@@ -248,4 +248,37 @@ public class IdentityService {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
     }
+
+    @Transactional
+    public UserDto updateProfile(UUID userId, String fullName) {
+        User user = getUserById(userId);
+        user.setFullName(fullName);
+        user = userRepository.save(user);
+
+        auditService.logEvent(user.getId(), null, "USER_PROFILE_UPDATE", "USER",
+                user.getId().toString(), "SUCCESS", UUID.randomUUID().toString(),
+                "{\"fullName\":\"" + fullName + "\"}");
+
+        return new UserDto(user.getId(), user.getFullName(), user.getEmail(), user.isEmailVerified(), user.getStatus());
+    }
+
+    @Transactional
+    public void changePassword(UUID userId, String currentPassword, String newPassword) {
+        User user = getUserById(userId);
+
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            auditService.logEvent(user.getId(), null, "PASSWORD_CHANGE_FAILED", "USER",
+                    user.getId().toString(), "FAILURE", UUID.randomUUID().toString(), "{}");
+            throw new UnauthorizedException("Current password does not match");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Invalidate active sessions to prevent hijacked sessions continuing after password change
+        refreshTokenService.revokeAllForUser(user.getId());
+
+        auditService.logEvent(user.getId(), null, "PASSWORD_CHANGE_SUCCESS", "USER",
+                user.getId().toString(), "SUCCESS", UUID.randomUUID().toString(), "{}");
+    }
 }
