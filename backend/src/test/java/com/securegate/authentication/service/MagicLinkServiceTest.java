@@ -65,6 +65,7 @@ class MagicLinkServiceTest {
     void testSendMagicLinkSuccess() {
         String email = "alice@example.com";
         User user = new User("Alice", email, null);
+        user.setId(UUID.randomUUID());
 
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
 
@@ -83,6 +84,7 @@ class MagicLinkServiceTest {
 
         MagicLinkToken token = new MagicLinkToken(email, tokenHash, Instant.now().plusSeconds(600));
         User user = new User("Alice", email, null);
+        user.setId(UUID.randomUUID());
         Session session = new Session(user.getId(), "Mozilla", "127.0.0.1", Instant.now().plusSeconds(3600));
 
         when(magicLinkTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(token));
