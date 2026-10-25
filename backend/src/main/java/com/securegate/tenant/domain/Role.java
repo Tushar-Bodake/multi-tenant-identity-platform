@@ -45,6 +45,13 @@ public class Role {
         this.createdAt = Instant.now();
     }
 
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+    }
+
     public UUID getId() {
         return id;
     }

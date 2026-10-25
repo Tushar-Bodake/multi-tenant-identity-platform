@@ -14,10 +14,10 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:securegate_db}}
-    username: ${POSTGRES_USER:securegate_app}
-    password: ${POSTGRES_PASSWORD:secure_app_password_change_me}
-    driver-class-name: org.postgresql.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:securegate;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${POSTGRES_USER:sa}
+    password: ${POSTGRES_PASSWORD:}
+    driver-class-name: org.h2.Driver
     hikari:
       pool-name: SecureGateHikariCP
       maximum-pool-size: 15
@@ -28,14 +28,15 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create-drop
     properties:
       hibernate:
         format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
         jdbc:
           batch_size: 25
   flyway:
-    enabled: true
+    enabled: false
     baseline-on-migrate: true
     locations: classpath:db/migration
     user: ${POSTGRES_MIGRATION_USER:${POSTGRES_USER:securegate_admin}}
@@ -45,17 +46,24 @@ spring:
     port: ${SPRING_MAIL_PORT:1025}
     username: ${SPRING_MAIL_USERNAME:}
     password: ${SPRING_MAIL_PASSWORD:}
+    test-connection: false
     properties:
       mail:
         smtp:
           auth: false
           starttls:
             enable: false
+          connectiontimeout: 1000
+          timeout: 1000
+          writetimeout: 1000
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      repositories:
+        enabled: false
 
 securegate:
   app-base-url: ${APP_BASE_URL:http://localhost:3000}
@@ -92,6 +100,9 @@ management:
       show-details: when_authorized
       probes:
         enabled: true
+  health:
+    mail:
+      enabled: false
 
 springdoc:
   api-docs:
