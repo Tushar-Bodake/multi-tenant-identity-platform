@@ -141,4 +141,125 @@ class IdentityServiceTest {
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessageContaining("temporarily locked");
     }
+
+    // -----------------------------------------------------------------------
+    // verifyEmail
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should mark user as ACTIVE and email verified on valid token")
+    void testVerifyEmailSuccess() {
+        User user = new User("Alice", "alice@example.com", "hash");
+        user.setId(UUID.randomUUID());
+
+        String rawToken = "raw-verification-token";
+        String tokenHash = com.securegate.common.SecurityUtils.sha256Hex(rawToken);
+
+        com.securegate.identity.domain.EmailVerificationToken evToken =
+                new com.securegate.identity.domain.EmailVerificationToken(
+                        user.getId(), tokenHash, java.time.Instant.now().plusSeconds(3600));
+
+        when(emailVerificationTokenRepository.findByTokenHash(tokenHash))
+                .thenReturn(Optional.of(evToken));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(emailVerificationTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(auditService.logEvent(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(null);
+
+        identityService.verifyEmail(rawToken);
+
+        assertThat(user.isEmailVerified()).isTrue();
+        assertThat(user.getStatus()).isEqualTo(com.securegate.identity.domain.UserStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("Should reject an already-used verification token")
+    void testVerifyEmailAlreadyUsedToken() {
+        User user = new User("Alice", "alice@example.com", "hash");
+        user.setId(UUID.randomUUID());
+
+        String rawToken = "used-token";
+        String tokenHash = com.securegate.common.SecurityUtils.sha256Hex(rawToken);
+
+        com.securegate.identity.domain.EmailVerificationToken evToken =
+                new com.securegate.identity.domain.EmailVerificationToken(
+                        user.getId(), tokenHash, java.time.Instant.now().plusSeconds(3600));
+        evToken.markUsed();
+
+        when(emailVerificationTokenRepository.findByTokenHash(tokenHash))
+                .thenReturn(Optional.of(evToken));
+
+        assertThatThrownBy(() -> identityService.verifyEmail(rawToken))
+                .isInstanceOf(com.securegate.common.error.ConflictException.class)
+                .hasMessageContaining("already been used");
+    }
+
+    // -----------------------------------------------------------------------
+    // forgotPassword
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should send reset email for a registered user")
+    void testForgotPasswordSendsEmail() {
+        User user = new User("Alice", "alice@example.com", "hash");
+        user.setId(UUID.randomUUID());
+
+        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+        when(passwordResetTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(auditService.logEvent(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(null);
+
+        identityService.forgotPassword("alice@example.com");
+
+        verify(passwordResetTokenRepository).deleteByUserId(user.getId());
+        verify(emailService).sendPasswordResetEmail(eq("alice@example.com"), anyString());
+    }
+
+    @Test
+    @DisplayName("Should silently ignore unknown email to prevent user enumeration")
+    void testForgotPasswordUnknownEmailIsNoOp() {
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+
+        identityService.forgotPassword("unknown@example.com");
+
+        verifyNoInteractions(emailService);
+        verifyNoInteractions(passwordResetTokenRepository);
+    }
+
+    // -----------------------------------------------------------------------
+    // changePassword
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should change password and revoke all sessions on success")
+    void testChangePasswordSuccess() {
+        User user = new User("Alice", "alice@example.com", "$argon2id$oldhash");
+        user.setId(UUID.randomUUID());
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("OldPass123!", "$argon2id$oldhash")).thenReturn(true);
+        when(passwordEncoder.encode("NewPass123!")).thenReturn("$argon2id$newhash");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(auditService.logEvent(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(null);
+
+        identityService.changePassword(user.getId(), "OldPass123!", "NewPass123!");
+
+        assertThat(user.getPasswordHash()).isEqualTo("$argon2id$newhash");
+        verify(refreshTokenService).revokeAllForUser(user.getId());
+    }
+
+    @Test
+    @DisplayName("Should reject change password when current password is incorrect")
+    void testChangePasswordWrongCurrent() {
+        User user = new User("Alice", "alice@example.com", "$argon2id$hash");
+        user.setId(UUID.randomUUID());
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("WrongPass!", "$argon2id$hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> identityService.changePassword(user.getId(), "WrongPass!", "NewPass123!"))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessageContaining("Current password does not match");
+
+        verifyNoMoreInteractions(refreshTokenService);
+    }
 }
