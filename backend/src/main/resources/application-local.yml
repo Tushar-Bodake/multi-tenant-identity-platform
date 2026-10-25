@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/securegate_local;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+  flyway:
+    enabled: false
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+server:
+  port: 8080
+
+securegate:
+  app-base-url: http://localhost:3000
+  jwt:
+    issuer: https://auth.securegate.local
+    audience: securegate-api
+    access-token-expiration-seconds: 3600
+    refresh-token-expiration-seconds: 604800
+  webauthn:
+    rp-name: SecureGate
+    rp-id: localhost
+    origin: http://localhost:3000
+  magic-link:
+    expiration-minutes: 15

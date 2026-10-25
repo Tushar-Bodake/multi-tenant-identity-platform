@@ -1,12 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
   title: 'SecureGate — Multi-Tenant Identity & Access Management',
   description: 'Enterprise-grade multi-tenant authentication, authorization, passkeys, and tamper-evident audit logging for SaaS.',
 };
-
-import { AuthProvider } from '@/context/AuthContext';
 
 export default function RootLayout({
   children,
