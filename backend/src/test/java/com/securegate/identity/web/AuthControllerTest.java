@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.securegate.authentication.service.JwtService;
 import com.securegate.authentication.service.RefreshTokenService;
 import com.securegate.common.error.ConflictException;
+import com.securegate.common.error.GlobalExceptionHandler;
 import com.securegate.common.error.UnauthorizedException;
 import com.securegate.common.security.JwtAuthenticationFilter;
-import com.securegate.identity.domain.User;
+import com.securegate.common.security.RateLimitingFilter;
+import com.securegate.common.security.SecurityConfig;
 import com.securegate.identity.domain.UserStatus;
 import com.securegate.identity.dto.*;
 import com.securegate.identity.service.IdentityService;
@@ -17,8 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,29 +29,33 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Slice test for AuthController — mocks all service dependencies and
- * exercises HTTP-layer validation, response shapes, and error handling
- * without starting a full Spring context.
+ * Slice test for {@link AuthController}. Mocks all service dependencies and
+ * exercises HTTP-layer validation, response shapes, cookie handling, and
+ * error codes without starting a full application context.
  */
 @WebMvcTest(
         controllers = AuthController.class,
-        excludeFilters = @ComponentScan.Filter(
-                type = FilterType.ASSIGNABLE_TYPE,
-                classes = JwtAuthenticationFilter.class
-        )
+        excludeAutoConfiguration = {
+                org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class
+        }
 )
+@Import({SecurityConfig.class, GlobalExceptionHandler.class})
 class AuthControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
+    // Beans required by SecurityConfig and filters
+    @MockBean private JwtAuthenticationFilter jwtAuthenticationFilter;
+    @MockBean private RateLimitingFilter rateLimitingFilter;
+
+    // Business mocks
     @MockBean private IdentityService identityService;
     @MockBean private RefreshTokenService refreshTokenService;
     @MockBean private TenantService tenantService;
@@ -73,7 +78,6 @@ class AuthControllerTest {
         when(identityService.register(any(RegisterRequest.class))).thenReturn(dto);
 
         mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -89,7 +93,6 @@ class AuthControllerTest {
         String badJson = "{\"fullName\":\"Alice\",\"email\":\"alice@example.com\"}";
 
         mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(badJson))
                 .andExpect(status().isBadRequest());
@@ -105,7 +108,6 @@ class AuthControllerTest {
         when(identityService.register(any())).thenThrow(new ConflictException("An account with this email already exists"));
 
         mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isConflict());
@@ -116,7 +118,7 @@ class AuthControllerTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("POST /login — 200 OK with valid credentials and refresh cookie set")
+    @DisplayName("POST /login — 200 OK with valid credentials and HttpOnly refresh cookie set")
     @WithAnonymousUser
     void testLoginSuccess() throws Exception {
         LoginRequest req = new LoginRequest("alice@example.com", "SecurePassword123!");
@@ -129,7 +131,6 @@ class AuthControllerTest {
         when(identityService.login(any(LoginRequest.class), any(), any(), any())).thenReturn(authResponse);
 
         mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -149,7 +150,6 @@ class AuthControllerTest {
                 .thenThrow(new UnauthorizedException("Invalid email or password"));
 
         mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isUnauthorized());
@@ -160,13 +160,12 @@ class AuthControllerTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("POST /verify-email — 200 OK with valid token")
+    @DisplayName("POST /verify-email — 200 OK and delegates to IdentityService")
     @WithAnonymousUser
     void testVerifyEmailSuccess() throws Exception {
         VerifyEmailRequest req = new VerifyEmailRequest("valid-raw-token");
 
         mockMvc.perform(post("/api/v1/auth/verify-email")
-                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -180,13 +179,12 @@ class AuthControllerTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("POST /forgot-password — 200 OK (ambiguous to prevent email enumeration)")
+    @DisplayName("POST /forgot-password — 200 OK regardless of email existence (anti-enumeration)")
     @WithAnonymousUser
     void testForgotPasswordAlwaysOk() throws Exception {
         ForgotPasswordRequest req = new ForgotPasswordRequest("anyone@example.com");
 
         mockMvc.perform(post("/api/v1/auth/forgot-password")
-                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -200,13 +198,12 @@ class AuthControllerTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("POST /logout — 200 OK and refresh token is revoked")
+    @DisplayName("POST /logout — 200 OK and revokes refresh token")
     @WithAnonymousUser
     void testLogout() throws Exception {
         AuthController.RefreshTokenRequest req = new AuthController.RefreshTokenRequest("raw-refresh-token");
 
         mockMvc.perform(post("/api/v1/auth/logout")
-                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
