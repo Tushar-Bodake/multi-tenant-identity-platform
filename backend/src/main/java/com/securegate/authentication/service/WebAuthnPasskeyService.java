@@ -40,13 +40,13 @@ public class WebAuthnPasskeyService {
     private static final Logger log = LoggerFactory.getLogger(WebAuthnPasskeyService.class);
 
     @Value("${securegate.webauthn.rp-name:SecureGate}")
-    private String rpName;
+    private String rpName = "SecureGate";
 
     @Value("${securegate.webauthn.rp-id:localhost}")
-    private String rpId;
+    private String rpId = "localhost";
 
     @Value("${securegate.webauthn.origin:http://localhost:3000}")
-    private String origin;
+    private String origin = "http://localhost:3000";
 
     private final PasskeyCredentialRepository passkeyRepository;
     private final UserRepository userRepository;
