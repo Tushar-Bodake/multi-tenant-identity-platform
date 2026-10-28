@@ -105,14 +105,17 @@ echo.
 
 REM ---------- 4. Build and Start Backend ----------
 echo [Step 4/5] Building and starting the backend...
-echo     This may take a minute on first run...
 echo.
+
+netstat -an 2>nul | findstr /R /C:":8081 .*LISTENING" >nul 2>nul
+if %ERRORLEVEL% EQU 0 goto backend_already_running
 
 set "SPRING_PROFILES_ACTIVE=dev"
 set "SERVER_PORT=8081"
 
 pushd "%~dp0backend"
-call mvn clean install -DskipTests -q
+echo     Building backend. Maven output will appear below.
+call mvn clean install -DskipTests
 if %ERRORLEVEL% NEQ 0 (
     echo [X] Maven build failed! Check the output above.
     popd
@@ -130,7 +133,7 @@ set "RETRIES=0"
 :wait_backend
 ping -n 6 127.0.0.1 >nul 2>nul
 set /a RETRIES+=1
-netstat -an 2>nul | findstr ":8081.*LISTENING" >nul 2>nul
+netstat -an 2>nul | findstr /R /C:":8081 .*LISTENING" >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
     if %RETRIES% LSS 12 (
         echo     Still waiting... attempt %RETRIES% of 12
@@ -142,23 +145,62 @@ if %ERRORLEVEL% NEQ 0 (
 ) else (
     echo [OK] Backend is running on port 8081!
 )
+goto backend_ready
+
+:backend_already_running
+echo [OK] Port 8081 is already in use. Leaving the existing process untouched.
+
+:backend_ready
 echo.
 
 REM ---------- 5. Install and Start Frontend ----------
 echo [Step 5/5] Installing and starting the frontend...
+set "FRONTEND_PORT=3000"
+netstat -an 2>nul | findstr /R /C:":3000 .*LISTENING" >nul 2>nul
+if %ERRORLEVEL% EQU 1 goto frontend_port_ready
+set "FRONTEND_PORT=3001"
+netstat -an 2>nul | findstr /R /C:":3001 .*LISTENING" >nul 2>nul
+if %ERRORLEVEL% EQU 1 goto frontend_port_ready
+set "FRONTEND_PORT=3002"
+netstat -an 2>nul | findstr /R /C:":3002 .*LISTENING" >nul 2>nul
+if %ERRORLEVEL% EQU 0 goto no_frontend_port
+
+:frontend_port_ready
+echo     Frontend will use port %FRONTEND_PORT%.
+
 pushd "%~dp0frontend"
-call npm install --silent
-echo [OK] Frontend dependencies installed
-echo [>>] Starting frontend on http://localhost:3000 ...
-start "SecureGate Frontend" npm run dev
+if not exist "node_modules" (
+    echo     Installing frontend dependencies. npm output will appear below.
+    call npm install
+    if %ERRORLEVEL% NEQ 0 (
+        echo [X] npm install failed! Check the output above.
+        popd
+        pause
+        exit /b 1
+    )
+    echo [OK] Frontend dependencies installed
+) else (
+    echo [OK] Frontend dependencies are already installed
+)
+echo [>>] Starting frontend on http://localhost:%FRONTEND_PORT% ...
+start "SecureGate Frontend" npm run dev -- -p %FRONTEND_PORT%
 popd
+goto frontend_started
+
+:no_frontend_port
+echo [X] Ports 3000, 3001, and 3002 are all in use.
+echo     Stop one of the applications using these ports and try again.
+pause
+exit /b 1
+
+:frontend_started
 
 echo.
 echo ================================================================
-echo   SecureGate is up and running!
+echo   SecureGate startup initiated.
 echo ================================================================
 echo.
-echo   Frontend UI          : http://localhost:3000
+echo   Frontend UI          : http://localhost:%FRONTEND_PORT%
 echo   Backend API          : http://localhost:8081/api/v1
 echo   Backend Health Check : http://localhost:8081/actuator/health
 echo   Swagger API Docs     : http://localhost:8081/swagger-ui.html
@@ -168,8 +210,8 @@ echo   Default admin login:
 echo     Email    : admin@securegate.local
 echo     Password : AdminPassword123!
 echo.
-echo   To stop: close the "SecureGate Backend" and
-echo            "SecureGate Frontend" windows.
+echo   To stop: close the "SecureGate Backend" window if it was started,
+echo            and the "SecureGate Frontend" window.
 echo ================================================================
 echo.
 pause
