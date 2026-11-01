@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -28,7 +27,6 @@ interface DashboardLayoutProps {
   subtitle?: string;
   actions?: React.ReactNode;
 }
-
 export default function DashboardLayout({
   children,
   title,
