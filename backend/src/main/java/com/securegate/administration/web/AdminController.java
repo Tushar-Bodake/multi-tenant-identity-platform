@@ -1,5 +1,6 @@
 package com.securegate.administration.web;
 
+
 import com.securegate.audit.domain.AuditEvent;
 import com.securegate.audit.repository.AuditRepository;
 import com.securegate.identity.domain.User;
@@ -25,7 +26,6 @@ import java.util.Map;
 @PreAuthorize("hasRole('PLATFORM_ADMIN')")
 @Tag(name = "Platform Administration", description = "System-level administrative operational controls")
 public class AdminController {
-
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
     private final AuditRepository auditRepository;
@@ -59,7 +59,6 @@ public class AdminController {
     public ResponseEntity<List<Organization>> listAllOrganizations() {
         return ResponseEntity.ok(organizationRepository.findAll());
     }
-
     @GetMapping("/users")
     @Operation(summary = "List all users on the platform")
     public ResponseEntity<List<UserDto>> listAllUsers() {
