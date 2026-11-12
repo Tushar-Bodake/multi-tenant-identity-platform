@@ -7,7 +7,6 @@ server:
     include-binding-errors: never
     include-stacktrace: never
     include-exception: false
-
 spring:
   application:
     name: securegate-backend
@@ -64,7 +63,6 @@ spring:
     redis:
       repositories:
         enabled: false
-
 securegate:
   app-base-url: ${APP_BASE_URL:http://localhost:3000}
   mail:
