@@ -31,7 +31,7 @@ public class OAuthController {
             String name,
             boolean confirmLink
     ) {}
-
+    
     public OAuthController(OAuthService oAuthService) {
         this.oAuthService = oAuthService;
     }
@@ -70,7 +70,6 @@ public class OAuthController {
                 .sameSite("Lax")
                 .build();
         httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-
         return ResponseEntity.ok(auth);
     }
 }
