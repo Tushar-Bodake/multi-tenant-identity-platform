@@ -17,11 +17,11 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
     @Modifying
     @Query("UPDATE RefreshToken r SET r.revoked = true WHERE r.tokenFamily = :family")
     void revokeTokenFamily(@Param("family") UUID tokenFamily);
-
+    
     @Modifying
     @Query("UPDATE RefreshToken r SET r.revoked = true WHERE r.userId = :userId")
     void revokeAllForUser(@Param("userId") UUID userId);
-
+    
     @Modifying
     @Query("UPDATE RefreshToken r SET r.revoked = true WHERE r.sessionId = :sessionId")
     void revokeAllForSession(@Param("sessionId") UUID sessionId);
