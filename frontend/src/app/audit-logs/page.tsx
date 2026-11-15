@@ -70,7 +70,7 @@ export default function AuditLogsPage() {
   const handleVerifyChain = async () => {
     if (!activeOrganization) return;
     setVerifying(true);
-
+    
     try {
       const result = await api.fetch<AuditVerificationResult>(
         `/organizations/${activeOrganization.id}/audit-logs/verify`
