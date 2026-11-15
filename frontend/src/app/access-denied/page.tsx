@@ -18,7 +18,6 @@ export default function AccessDeniedPage() {
           You do not have the required role or organization permission to access this resource.
           SecureGate enforces strict server-side tenant boundaries and role-based access control.
         </p>
-
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             href="/dashboard"
