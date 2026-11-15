@@ -44,11 +44,9 @@ export default function AdminPage() {
       router.push('/login');
       return;
     }
-
     const loadAdminData = async () => {
       setLoading(true);
       setErrorMessage(null);
-
       try {
         const statsData = await api.fetch<PlatformStats>('/admin/stats');
         setStats(statsData);
