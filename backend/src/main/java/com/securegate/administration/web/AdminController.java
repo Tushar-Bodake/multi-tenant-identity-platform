@@ -1,6 +1,5 @@
 package com.securegate.administration.web;
 
-
 import com.securegate.audit.domain.AuditEvent;
 import com.securegate.audit.repository.AuditRepository;
 import com.securegate.identity.domain.User;
